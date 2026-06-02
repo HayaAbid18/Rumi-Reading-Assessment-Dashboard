@@ -254,7 +254,7 @@ export default function Dashboard() {
                   <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {scoreDistribution.map((_, i) => (
+                    {scoreDistribution.map((_: any, i: number) => (
                       <Cell key={i} fill={i >= scoreDistribution.length - 2 ? '#3B82F6' : '#BFDBFE'} />
                     ))}
                   </Bar>
