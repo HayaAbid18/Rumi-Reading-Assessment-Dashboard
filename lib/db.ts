@@ -1,13 +1,10 @@
 import { Pool } from 'pg';
 
-// Disable SSL certificate validation for self-signed certs
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 console.log('Database URL:', process.env.DATABASE_URL ? 'Set' : 'NOT SET');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: true,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
@@ -22,3 +19,4 @@ pool.on('connect', () => {
 });
 
 export default pool;
+
