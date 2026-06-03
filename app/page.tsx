@@ -162,10 +162,6 @@ export default function Dashboard() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Rumi Reading test metrics</h1>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400 border border-gray-200 rounded-full px-3 py-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            Sample data — wire to DB to go live
-          </div>
         </div>
 
         {/* Filters */}
