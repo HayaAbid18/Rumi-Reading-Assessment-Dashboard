@@ -107,7 +107,7 @@ export default function Dashboard() {
   const metricOptions = [
     { key: 'avg_wcpm', label: 'Avg WCPM' },
     { key: 'tests_taken', label: 'Tests taken' },
-    { key: 'unique_students', label: 'Active students' },
+    { key: 'unique_students', label: 'Students assessed' },
   ];
 
   function MetricCard({ label, value, delta, deltaDir }: any) {
@@ -209,7 +209,7 @@ export default function Dashboard() {
             <p className="text-[11px] mt-2 opacity-70">↑ 1% vs last week</p>
           </div>
           <div className="bg-violet-600 text-white rounded-xl p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider opacity-70 mb-1">Weekly active students</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider opacity-70 mb-1">Students assessed this week</p>
             <p className="text-3xl font-mono font-semibold">{metrics?.adoption?.active_students || '—'}</p>
             <p className="text-[11px] mt-2 opacity-70">↑ 18 this week</p>
           </div>
@@ -266,10 +266,10 @@ export default function Dashboard() {
             {/* Engagement */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Usage & engagement</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Active students / week" value={metrics?.adoption?.active_students || '—'} delta="↑ 18 this week" deltaDir="up" />
-              <MetricCard label="Total sessions" value={metrics?.completion?.total_assessments || '—'} delta="cumulative" deltaDir="neutral" />
-              <MetricCard label="Drop-off rate" value={`${metrics?.completion?.repeat_attempt_rate != null ? toNum(metrics.completion.repeat_attempt_rate).toFixed(0) : '—'}%`} delta="↑ 3% vs prev week" deltaDir="down" />
-              <MetricCard label="Repeat attempts" value={`${metrics?.adoption?.active_teachers || '—'}`} delta="active teachers" deltaDir="neutral" />
+              <MetricCard label="Students assessed / week" value={metrics?.adoption?.active_students || '—'} delta="↑ 18 this week" deltaDir="up" />
+              <MetricCard label="Total assessments" value={metrics?.completion?.total_assessments || '—'} delta="cumulative" deltaDir="neutral" />
+              <MetricCard label="Repeat rate" value={`${metrics?.completion?.repeat_attempt_rate != null ? toNum(metrics.completion.repeat_attempt_rate).toFixed(0) : '—'}%`} delta="↑ 3% vs prev week" deltaDir="down" />
+              <MetricCard label="Active teachers" value={`${metrics?.adoption?.active_teachers || '—'}`} delta="administering tests" deltaDir="neutral" />
             </div>
 
             {/* Trend chart */}
@@ -303,8 +303,8 @@ export default function Dashboard() {
             {/* Pilot coverage */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Pilot coverage</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <MetricCard label="Students enrolled" value={metrics?.adoption?.active_students || '—'} delta="across filtered schools" deltaDir="neutral" />
-              <MetricCard label="Ever taken test" value={`${metrics?.performance?.pct_on_track != null ? toNum(metrics.performance.pct_on_track).toFixed(0) : '—'}%`} delta="of enrolled students" deltaDir="neutral" />
+              <MetricCard label="Students assessed" value={metrics?.adoption?.active_students || '—'} delta="across filtered schools" deltaDir="neutral" />
+              <MetricCard label="On track" value={`${metrics?.performance?.pct_on_track != null ? toNum(metrics.performance.pct_on_track).toFixed(0) : '—'}%`} delta="of assessed students" deltaDir="neutral" />
               <MetricCard label="Active teachers" value={metrics?.adoption?.active_teachers || '—'} delta="across filtered schools" deltaDir="neutral" />
             </div>
           </>
@@ -317,7 +317,7 @@ export default function Dashboard() {
 
             {/* Key Engagement Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Weekly Active Students" value={engagement?.current_wau || '—'} delta={`${Math.round((engagement?.repeat_rate?.percentage || 0) * 10) / 10}% repeat rate`} deltaDir="neutral" />
+              <MetricCard label="Students Assessed This Week" value={engagement?.current_wau || '—'} delta={`${Math.round((engagement?.repeat_rate?.percentage || 0) * 10) / 10}% repeat rate`} deltaDir="neutral" />
               <MetricCard label="Assessments per Student" value={`${engagement?.frequency?.avg_assessments_per_student_per_week || '—'}`} delta="per week" deltaDir="neutral" />
               <MetricCard label="Avg Session Time" value={`${engagement?.duration?.avg_minutes || '—'}m`} delta="per assessment" deltaDir="neutral" />
               <MetricCard label="Growth Attempts" value={`${engagement?.growth?.growth_attempt_pct || '—'}%`} delta={`${engagement?.growth?.students_attempting_growth || 0} students`} deltaDir="neutral" />
@@ -362,7 +362,7 @@ export default function Dashboard() {
             </div>
 
             {/* Weekly Engagement Trend */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Weekly active students trend</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Weekly students assessed trend</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={(engagement?.wau_trend || []).reverse()}>
@@ -388,7 +388,7 @@ export default function Dashboard() {
             </div>
 
             {/* Daily Active Users Trend */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Daily active students (last 7 days)</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Daily students assessed (last 7 days)</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5">
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={(engagement?.dau_trend || []).reverse()}>
