@@ -4,6 +4,8 @@ import pool from '@/lib/db';
 export async function GET(request: NextRequest) {
   const school = request.nextUrl.searchParams.get('school');
   const region = request.nextUrl.searchParams.get('region');
+  const startDate = request.nextUrl.searchParams.get('startDate');
+  const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
     let query = `
@@ -38,6 +40,12 @@ export async function GET(request: NextRequest) {
       query += ` AND u.school_name = $${paramCount}`;
       params.push(school);
       paramCount++;
+    }
+
+    if (startDate && endDate) {
+      query += ` AND DATE(ra.created_at) >= $${paramCount} AND DATE(ra.created_at) <= $${paramCount + 1}`;
+      params.push(startDate, endDate);
+      paramCount += 2;
     }
 
     query += `

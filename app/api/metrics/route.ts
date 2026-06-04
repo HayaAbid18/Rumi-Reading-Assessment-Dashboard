@@ -3,18 +3,29 @@ import pool from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   const region = request.nextUrl.searchParams.get('region');
+  const startDate = request.nextUrl.searchParams.get('startDate');
+  const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
     let regionFilter = '';
+    let dateFilter = '';
     const params: any[] = [];
+    let paramCount = 1;
 
     if (region && region !== 'All') {
       if (region === 'International') {
         regionFilter = ` AND (u.region IS NULL OR u.region = '')`;
       } else {
-        regionFilter = ` AND u.region = $1`;
+        regionFilter = ` AND u.region = $${paramCount}`;
         params.push(region);
+        paramCount++;
       }
+    }
+
+    if (startDate && endDate) {
+      dateFilter = ` AND DATE(ra.created_at) >= $${paramCount} AND DATE(ra.created_at) <= $${paramCount + 1}`;
+      params.push(startDate, endDate);
+      paramCount += 2;
     }
 
     // Performance metrics
@@ -29,7 +40,7 @@ export async function GET(request: NextRequest) {
       JOIN users u ON ra.user_id = u.id
       WHERE ra.status = 'completed'
         AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}`,
+        ${regionFilter}${dateFilter}`,
       params
     );
 
@@ -44,7 +55,7 @@ export async function GET(request: NextRequest) {
       JOIN users u ON ra.user_id = u.id
       WHERE ra.status = 'completed'
         AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}`,
+        ${regionFilter}${dateFilter}`,
       params
     );
 
@@ -58,7 +69,7 @@ export async function GET(request: NextRequest) {
       JOIN users u ON ra.user_id = u.id
       WHERE ra.status = 'completed'
         AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}`,
+        ${regionFilter}${dateFilter}`,
       params
     );
 

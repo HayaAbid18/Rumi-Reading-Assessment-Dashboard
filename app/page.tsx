@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [selectedSchool, setSelectedSchool] = useState('All');
   const [activeTab, setActiveTab] = useState('overview');
   const [activeMetric, setActiveMetric] = useState('avg_wcpm');
+  const [timeRange, setTimeRange] = useState('last_4_weeks');
 
   const [metrics, setMetrics] = useState<any>(null);
   const [engagement, setEngagement] = useState<any>(null);
@@ -35,7 +36,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAllData();
-  }, [selectedRegion, selectedSchool]);
+  }, [selectedRegion, selectedSchool, timeRange]);
 
   const fetchRegions = async () => {
     try {
@@ -61,11 +62,14 @@ export default function Dashboard() {
 
   const fetchAllData = async () => {
     try {
+      const { startDate, endDate } = getDateRange(timeRange);
+      const dateParams = `&startDate=${startDate}&endDate=${endDate}`;
+
       const [metricsRes, teachersRes, studentsRes, engagementRes] = await Promise.all([
-        fetch(`/api/metrics?region=${selectedRegion}`),
-        fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}`),
-        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}`),
-        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}`)
+        fetch(`/api/metrics?region=${selectedRegion}${dateParams}`),
+        fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}${dateParams}`),
+        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}${dateParams}`),
+        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}`)
       ]);
 
       const [metricsData, teachersData, studentsData, engagementData] = await Promise.all([
@@ -85,6 +89,40 @@ export default function Dashboard() {
   };
 
   const toNum = (val: any) => parseFloat(String(val || 0));
+
+  const getDateRange = (range: string) => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+
+    let startDate = new Date();
+
+    switch (range) {
+      case 'this_week':
+        startDate = new Date(startOfWeek);
+        break;
+      case 'last_week':
+        startDate = new Date(startOfWeek);
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'last_4_weeks':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 28);
+        break;
+      case 'last_30_days':
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        break;
+      default:
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 28);
+    }
+
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: today.toISOString().split('T')[0]
+    };
+  };
 
   const trendData = useMemo(() => {
     if (!metrics?.trends) return [];
@@ -194,6 +232,17 @@ export default function Dashboard() {
               ))}
             </select>
           )}
+
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer"
+          >
+            <option value="this_week">This Week</option>
+            <option value="last_week">Last Week</option>
+            <option value="last_4_weeks">Last 4 Weeks</option>
+            <option value="last_30_days">Last 30 Days</option>
+          </select>
         </div>
 
         {/* Pilot KPIs */}

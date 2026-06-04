@@ -4,10 +4,13 @@ import pool from '@/lib/db';
 export async function GET(request: NextRequest) {
   const region = request.nextUrl.searchParams.get('region');
   const school = request.nextUrl.searchParams.get('school');
+  const startDate = request.nextUrl.searchParams.get('startDate');
+  const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
     let regionFilter = '';
     let schoolFilter = '';
+    let dateFilter = '';
     const params: any[] = [];
     let paramCount = 1;
 
@@ -27,7 +30,13 @@ export async function GET(request: NextRequest) {
       paramCount++;
     }
 
-    const baseFilter = `WHERE ra.status = 'completed' AND COALESCE(u.is_test_user, false) = false ${regionFilter} ${schoolFilter}`;
+    if (startDate && endDate) {
+      dateFilter = ` AND DATE(ra.created_at) >= $${paramCount} AND DATE(ra.created_at) <= $${paramCount + 1}`;
+      params.push(startDate, endDate);
+      paramCount += 2;
+    }
+
+    const baseFilter = `WHERE ra.status = 'completed' AND COALESCE(u.is_test_user, false) = false ${regionFilter} ${schoolFilter} ${dateFilter}`;
 
     // Current WAU (this week)
     const currentWauResult = await pool.query(
