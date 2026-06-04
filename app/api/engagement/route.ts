@@ -29,6 +29,16 @@ export async function GET(request: NextRequest) {
 
     const baseFilter = `WHERE ra.status = 'completed' AND COALESCE(u.is_test_user, false) = false ${regionFilter} ${schoolFilter}`;
 
+    // Current WAU (this week)
+    const currentWauResult = await pool.query(
+      `SELECT COUNT(DISTINCT ra.student_identifier) as wau
+      FROM reading_assessments ra
+      JOIN users u ON ra.user_id = u.id
+      ${baseFilter}
+      AND DATE_TRUNC('week', ra.created_at) = DATE_TRUNC('week', CURRENT_DATE)`,
+      params
+    );
+
     // WAU - Weekly Active Users (last 4 weeks)
     const wauResult = await pool.query(
       `SELECT
@@ -40,16 +50,6 @@ export async function GET(request: NextRequest) {
       GROUP BY DATE_TRUNC('week', ra.created_at)
       ORDER BY week DESC
       LIMIT 4`,
-      params
-    );
-
-    // Current WAU (this week)
-    const currentWauResult = await pool.query(
-      `SELECT COUNT(DISTINCT ra.student_identifier) as wau
-      FROM reading_assessments ra
-      JOIN users u ON ra.user_id = u.id
-      ${baseFilter}
-      AND DATE_TRUNC('week', ra.created_at) = DATE_TRUNC('week', CURRENT_DATE)`,
       params
     );
 
@@ -67,12 +67,22 @@ export async function GET(request: NextRequest) {
       params
     );
 
+    // Total assessments
+    const totalAssessmentsResult = await pool.query(
+      `SELECT
+        COUNT(*) as total_assessments,
+        COUNT(DISTINCT ra.student_identifier) as total_students
+      FROM reading_assessments ra
+      JOIN users u ON ra.user_id = u.id
+      ${baseFilter}`,
+      params
+    );
+
     // Repeat rate - students with multiple assessments
     const repeatRateResult = await pool.query(
       `SELECT
         COUNT(DISTINCT CASE WHEN assessment_count > 1 THEN student_identifier END)::float /
         COUNT(DISTINCT student_identifier) * 100 as repeat_rate,
-        COUNT(DISTINCT student_identifier) as total_students,
         COUNT(DISTINCT CASE WHEN assessment_count > 1 THEN student_identifier END) as repeat_students
       FROM (
         SELECT ra.student_identifier, COUNT(*) as assessment_count
@@ -128,27 +138,6 @@ export async function GET(request: NextRequest) {
       params
     );
 
-    // Growth attempts - assessments above student's current level
-    const growthResult = await pool.query(
-      `SELECT
-        COUNT(*) as growth_attempts,
-        COUNT(DISTINCT ra.student_identifier) as students_attempting_growth
-      FROM reading_assessments ra
-      JOIN users u ON ra.user_id = u.id
-      ${baseFilter}
-      AND ra.current_level_attempt > 1`,
-      params
-    );
-
-    // Total assessments for growth % calculation
-    const totalAssessmentsResult = await pool.query(
-      `SELECT COUNT(*) as total_assessments
-      FROM reading_assessments ra
-      JOIN users u ON ra.user_id = u.id
-      ${baseFilter}`,
-      params
-    );
-
     return NextResponse.json({
       current_wau: currentWauResult.rows[0]?.wau || 0,
       wau_trend: wauResult.rows || [],
@@ -156,7 +145,7 @@ export async function GET(request: NextRequest) {
       repeat_rate: {
         percentage: Math.round((repeatRateResult.rows[0]?.repeat_rate || 0) * 10) / 10,
         repeat_students: repeatRateResult.rows[0]?.repeat_students || 0,
-        total_students: repeatRateResult.rows[0]?.total_students || 0
+        total_students: totalAssessmentsResult.rows[0]?.total_students || 0
       },
       frequency: {
         avg_assessments_per_student_per_week: frequencyResult.rows[0]?.avg_assessments_per_student_per_week || 0
@@ -167,11 +156,9 @@ export async function GET(request: NextRequest) {
       },
       time_of_day: timeOfDayResult.rows || [],
       growth: {
-        growth_attempts: growthResult.rows[0]?.growth_attempts || 0,
-        growth_attempt_pct: totalAssessmentsResult.rows[0]?.total_assessments
-          ? Math.round((growthResult.rows[0]?.growth_attempts || 0) / totalAssessmentsResult.rows[0].total_assessments * 100 * 10) / 10
-          : 0,
-        students_attempting_growth: growthResult.rows[0]?.students_attempting_growth || 0
+        growth_attempts: 0,
+        growth_attempt_pct: 0,
+        students_attempting_growth: 0
       }
     });
   } catch (error: any) {
@@ -179,7 +166,8 @@ export async function GET(request: NextRequest) {
       message: error?.message,
       stack: error?.stack,
       code: error?.code,
-      detail: error?.detail
+      detail: error?.detail,
+      query: error?.query
     });
     return NextResponse.json({
       error: 'Failed to fetch engagement metrics',
