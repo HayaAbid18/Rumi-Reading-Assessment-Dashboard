@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [activeMetric, setActiveMetric] = useState('avg_wcpm');
 
   const [metrics, setMetrics] = useState<any>(null);
+  const [engagement, setEngagement] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
 
@@ -60,21 +61,24 @@ export default function Dashboard() {
 
   const fetchAllData = async () => {
     try {
-      const [metricsRes, teachersRes, studentsRes] = await Promise.all([
+      const [metricsRes, teachersRes, studentsRes, engagementRes] = await Promise.all([
         fetch(`/api/metrics?region=${selectedRegion}`),
         fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}`),
-        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}`)
+        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}`),
+        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}`)
       ]);
 
-      const [metricsData, teachersData, studentsData] = await Promise.all([
+      const [metricsData, teachersData, studentsData, engagementData] = await Promise.all([
         metricsRes.json(),
         teachersRes.json(),
-        studentsRes.json()
+        studentsRes.json(),
+        engagementRes.json()
       ]);
 
       setMetrics(metricsData);
       setTeachers(Array.isArray(teachersData) ? teachersData : []);
       setStudents(Array.isArray(studentsData) ? studentsData : []);
+      setEngagement(engagementData);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -213,7 +217,7 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <div className="flex gap-6 mb-6 border-b border-gray-200 pb-3">
-          {['overview', 'teachers', 'students'].map((tab) => (
+          {['overview', 'engagement', 'teachers', 'students'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -302,6 +306,111 @@ export default function Dashboard() {
               <MetricCard label="Students enrolled" value={metrics?.adoption?.active_students || '—'} delta="across filtered schools" deltaDir="neutral" />
               <MetricCard label="Ever taken test" value={`${metrics?.performance?.pct_on_track != null ? toNum(metrics.performance.pct_on_track).toFixed(0) : '—'}%`} delta="of enrolled students" deltaDir="neutral" />
               <MetricCard label="Active teachers" value={metrics?.adoption?.active_teachers || '—'} delta="across filtered schools" deltaDir="neutral" />
+            </div>
+          </>
+        )}
+
+        {/* Engagement Tab */}
+        {activeTab === 'engagement' && (
+          <>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Engagement metrics</p>
+
+            {/* Key Engagement Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <MetricCard label="Weekly Active Students" value={engagement?.current_wau || '—'} delta={`${Math.round((engagement?.repeat_rate?.percentage || 0) * 10) / 10}% repeat rate`} deltaDir="neutral" />
+              <MetricCard label="Assessments per Student" value={`${engagement?.frequency?.avg_assessments_per_student_per_week || '—'}`} delta="per week" deltaDir="neutral" />
+              <MetricCard label="Avg Session Time" value={`${engagement?.duration?.avg_minutes || '—'}m`} delta="per assessment" deltaDir="neutral" />
+              <MetricCard label="Growth Attempts" value={`${engagement?.growth?.growth_attempt_pct || '—'}%`} delta={`${engagement?.growth?.students_attempting_growth || 0} students`} deltaDir="neutral" />
+            </div>
+
+            {/* Engagement Metrics Breakdown */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Engagement breakdown</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">Usage pattern</p>
+                {engagement?.time_of_day && engagement.time_of_day.length > 0 ? (
+                  <div className="space-y-2">
+                    {engagement.time_of_day.map((item: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 capitalize">{item.period}</span>
+                        <span className="text-sm font-semibold text-gray-900">{item.assessments}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">No data</p>
+                )}
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">Repeat engagement</p>
+                <div>
+                  <p className="text-2xl font-mono font-semibold text-gray-900">{engagement?.repeat_rate?.repeat_students || '—'}</p>
+                  <p className="text-[11px] mt-1 text-gray-400">of {engagement?.repeat_rate?.total_students} students</p>
+                  <p className="text-xs font-semibold text-emerald-600 mt-2">{engagement?.repeat_rate?.percentage || '—'}% repeat</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">Growth mindset</p>
+                <div>
+                  <p className="text-2xl font-mono font-semibold text-gray-900">{engagement?.growth?.students_attempting_growth || '—'}</p>
+                  <p className="text-[11px] mt-1 text-gray-400">attempting above level</p>
+                  <p className="text-xs font-semibold text-blue-600 mt-2">{engagement?.growth?.growth_attempt_pct || '—'}%</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Engagement Trend */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Weekly active students trend</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={(engagement?.wau_trend || []).reverse()}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(date) => {
+                      const d = new Date(date);
+                      return `${d.getMonth() + 1}/${d.getDate()}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
+                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                  />
+                  <Line type="monotone" dataKey="wau" stroke="#3B82F6" strokeWidth={2} dot={{ r: 4, fill: '#3B82F6' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Daily Active Users Trend */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Daily active students (last 7 days)</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-5">
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={(engagement?.dau_trend || []).reverse()}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(date) => {
+                      const d = new Date(date);
+                      return d.toLocaleDateString('en-US', { weekday: 'short' });
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
+                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                  />
+                  <Bar dataKey="dau" radius={[4, 4, 0, 0]} fill="#10B981" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </>
         )}
