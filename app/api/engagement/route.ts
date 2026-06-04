@@ -132,13 +132,20 @@ export async function GET(request: NextRequest) {
     const growthResult = await pool.query(
       `SELECT
         COUNT(*) as growth_attempts,
-        ROUND(COUNT(*)::float / (SELECT COUNT(*) FROM reading_assessments ra2
-          JOIN users u2 ON ra2.user_id = u2.id ${baseFilter})::numeric * 100, 1) as growth_attempt_pct,
         COUNT(DISTINCT ra.student_identifier) as students_attempting_growth
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
       ${baseFilter}
       AND ra.current_level_attempt > 1`,
+      params
+    );
+
+    // Total assessments for growth % calculation
+    const totalAssessmentsResult = await pool.query(
+      `SELECT COUNT(*) as total_assessments
+      FROM reading_assessments ra
+      JOIN users u ON ra.user_id = u.id
+      ${baseFilter}`,
       params
     );
 
@@ -161,15 +168,24 @@ export async function GET(request: NextRequest) {
       time_of_day: timeOfDayResult.rows || [],
       growth: {
         growth_attempts: growthResult.rows[0]?.growth_attempts || 0,
-        growth_attempt_pct: growthResult.rows[0]?.growth_attempt_pct || 0,
+        growth_attempt_pct: totalAssessmentsResult.rows[0]?.total_assessments
+          ? Math.round((growthResult.rows[0]?.growth_attempts || 0) / totalAssessmentsResult.rows[0].total_assessments * 100 * 10) / 10
+          : 0,
         students_attempting_growth: growthResult.rows[0]?.students_attempting_growth || 0
       }
     });
   } catch (error: any) {
-    console.error('Error fetching engagement metrics:', error);
+    console.error('Error fetching engagement metrics:', {
+      message: error?.message,
+      stack: error?.stack,
+      code: error?.code,
+      detail: error?.detail
+    });
     return NextResponse.json({
       error: 'Failed to fetch engagement metrics',
-      details: error?.message || String(error)
+      details: error?.message || String(error),
+      code: error?.code,
+      detail: error?.detail
     }, { status: 500 });
   }
 }
