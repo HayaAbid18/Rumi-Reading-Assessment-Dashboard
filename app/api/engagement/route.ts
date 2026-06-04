@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     // Assessment frequency - average assessments per student per week
     const frequencyResult = await pool.query(
       `SELECT
-        ROUND(AVG(assessment_count)::numeric, 2) as avg_assessments_per_student_per_week
+        ROUND(AVG(assessment_count::numeric), 2) as avg_assessments_per_student_per_week
       FROM (
         SELECT
           ra.student_identifier,
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     const durationResult = await pool.query(
       `SELECT
         ROUND(AVG(ra.time_elapsed_seconds)::numeric, 1) as avg_duration_seconds,
-        ROUND(AVG(ra.time_elapsed_seconds) / 60::numeric, 1) as avg_duration_minutes
+        ROUND((AVG(ra.time_elapsed_seconds)::numeric / 60), 1) as avg_duration_minutes
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
       ${baseFilter}`,
