@@ -1,13 +1,12 @@
 import { Pool } from 'pg';
 
-console.log('Database connected:', process.env.DB_HOST ? 'Yes' : 'No');
+const connectionString = process.env.DATABASE_URL ||
+  `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT || 5432}/${process.env.PGDATABASE}?sslmode=${process.env.PGSSLMODE || 'require'}`;
+
+console.log('Database connected:', connectionString ? 'Yes' : 'No');
 
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  connectionString,
   ssl: {
     rejectUnauthorized: false,
   },
