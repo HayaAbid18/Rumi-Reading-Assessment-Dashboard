@@ -7,26 +7,26 @@ export async function GET(request: NextRequest) {
   const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
-    let regionFilter = '';
-    let dateFilter = '';
+    // Build filter conditions
+    const filters: string[] = ["ra.status = 'completed'", "COALESCE(u.is_test_user, false) = false"];
     const params: any[] = [];
-    let paramCount = 1;
 
     if (region && region !== 'All') {
       if (region === 'International') {
-        regionFilter = ` AND (u.region IS NULL OR u.region = '')`;
+        filters.push("(u.region IS NULL OR u.region = '')");
       } else {
-        regionFilter = ` AND u.region = $${paramCount}`;
+        filters.push(`u.region = $${params.length + 1}`);
         params.push(region);
-        paramCount++;
       }
     }
 
     if (startDate && endDate) {
-      dateFilter = ` AND DATE(ra.created_at) >= $${paramCount} AND DATE(ra.created_at) <= $${paramCount + 1}`;
+      filters.push(`ra.created_at::date >= $${params.length + 1}`);
+      filters.push(`ra.created_at::date <= $${params.length + 2}`);
       params.push(startDate, endDate);
-      paramCount += 2;
     }
+
+    const whereClause = `WHERE ${filters.join(' AND ')}`;
 
     // Performance metrics
     const performanceResult = await pool.query(
@@ -38,9 +38,7 @@ export async function GET(request: NextRequest) {
         COUNT(CASE WHEN ra.on_track = true THEN 1 END)::float / COUNT(*) * 100 as pct_on_track
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
-      WHERE ra.status = 'completed'
-        AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}${dateFilter}`,
+      ${whereClause}`,
       params
     );
 
@@ -53,9 +51,7 @@ export async function GET(request: NextRequest) {
         COUNT(*) as total_assessments
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
-      WHERE ra.status = 'completed'
-        AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}${dateFilter}`,
+      ${whereClause}`,
       params
     );
 
@@ -67,9 +63,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT u.school_name) as active_schools
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
-      WHERE ra.status = 'completed'
-        AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}${dateFilter}`,
+      ${whereClause}`,
       params
     );
 
@@ -82,9 +76,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT student_identifier) as unique_students
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
-      WHERE ra.status = 'completed'
-        AND COALESCE(u.is_test_user, false) = false
-        ${regionFilter}
+      ${whereClause}
       GROUP BY DATE_TRUNC('week', ra.created_at)
       ORDER BY week DESC
       LIMIT 12`,
@@ -103,10 +95,8 @@ export async function GET(request: NextRequest) {
         ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER ()::numeric, 1) as percentage
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
-      WHERE ra.status = 'completed'
-        AND COALESCE(u.is_test_user, false) = false
-        AND ra.wcpm IS NOT NULL
-        ${regionFilter}
+      ${whereClause}
+      AND ra.wcpm IS NOT NULL
       GROUP BY CASE
         WHEN ra.wcpm < 40 THEN 'Below Target'
         WHEN ra.wcpm >= 40 AND ra.wcpm < 60 THEN 'At Target'

@@ -8,35 +8,31 @@ export async function GET(request: NextRequest) {
   const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
-    let regionFilter = '';
-    let schoolFilter = '';
-    let dateFilter = '';
+    // Build filter conditions
+    const filters: string[] = ["ra.status = 'completed'", "COALESCE(u.is_test_user, false) = false"];
     const params: any[] = [];
-    let paramCount = 1;
 
     if (region && region !== 'All') {
       if (region === 'International') {
-        regionFilter = ` AND (u.region IS NULL OR u.region = '')`;
+        filters.push("(u.region IS NULL OR u.region = '')");
       } else {
-        regionFilter = ` AND u.region = $${paramCount}`;
+        filters.push(`u.region = $${params.length + 1}`);
         params.push(region);
-        paramCount++;
       }
     }
 
     if (school && school !== 'All') {
-      schoolFilter = ` AND u.school_name = $${paramCount}`;
+      filters.push(`u.school_name = $${params.length + 1}`);
       params.push(school);
-      paramCount++;
     }
 
     if (startDate && endDate) {
-      dateFilter = ` AND DATE(ra.created_at) >= $${paramCount} AND DATE(ra.created_at) <= $${paramCount + 1}`;
+      filters.push(`ra.created_at::date >= $${params.length + 1}`);
+      filters.push(`ra.created_at::date <= $${params.length + 2}`);
       params.push(startDate, endDate);
-      paramCount += 2;
     }
 
-    const baseFilter = `WHERE ra.status = 'completed' AND COALESCE(u.is_test_user, false) = false ${regionFilter} ${schoolFilter} ${dateFilter}`;
+    const baseFilter = `WHERE ${filters.join(' AND ')}`;
 
     // Current WAU (this week)
     const currentWauResult = await pool.query(
@@ -173,16 +169,11 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error fetching engagement metrics:', {
       message: error?.message,
-      stack: error?.stack,
-      code: error?.code,
-      detail: error?.detail,
-      query: error?.query
+      detail: error?.detail
     });
     return NextResponse.json({
       error: 'Failed to fetch engagement metrics',
-      details: error?.message || String(error),
-      code: error?.code,
-      detail: error?.detail
+      details: error?.message || String(error)
     }, { status: 500 });
   }
 }

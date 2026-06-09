@@ -8,8 +8,34 @@ export async function GET(request: NextRequest) {
   const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
-    let query = `
-      SELECT
+    // Build filter conditions
+    const filters: string[] = ["ra.status = 'completed'", "COALESCE(u.is_test_user, false) = false"];
+    const params: any[] = [];
+
+    if (region && region !== 'All') {
+      if (region === 'International') {
+        filters.push("(u.region IS NULL OR u.region = '')");
+      } else {
+        filters.push(`u.region = $${params.length + 1}`);
+        params.push(region);
+      }
+    }
+
+    if (school && school !== 'All') {
+      filters.push(`u.school_name = $${params.length + 1}`);
+      params.push(school);
+    }
+
+    if (startDate && endDate) {
+      filters.push(`ra.created_at::date >= $${params.length + 1}`);
+      filters.push(`ra.created_at::date <= $${params.length + 2}`);
+      params.push(startDate, endDate);
+    }
+
+    const whereClause = `WHERE ${filters.join(' AND ')}`;
+
+    const result = await pool.query(
+      `SELECT
         ra.id,
         ra.student_identifier,
         ra.grade_level,
@@ -26,38 +52,12 @@ export async function GET(request: NextRequest) {
         EXTRACT(EPOCH FROM (ra.completed_at - ra.created_at))::int as duration_seconds
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
-      WHERE ra.status = 'completed'
-        AND COALESCE(u.is_test_user, false) = false
-    `;
+      ${whereClause}
+      ORDER BY ra.created_at DESC
+      LIMIT 500`,
+      params
+    );
 
-    const params: any[] = [];
-    let paramCount = 1;
-
-    if (region && region !== 'All') {
-      if (region === 'International') {
-        query += ` AND (u.region IS NULL OR u.region = '')`;
-      } else {
-        query += ` AND u.region = $${paramCount}`;
-        params.push(region);
-        paramCount++;
-      }
-    }
-
-    if (school && school !== 'All') {
-      query += ` AND u.school_name = $${paramCount}`;
-      params.push(school);
-      paramCount++;
-    }
-
-    if (startDate && endDate) {
-      query += ` AND DATE(ra.created_at) >= $${paramCount} AND DATE(ra.created_at) <= $${paramCount + 1}`;
-      params.push(startDate, endDate);
-      paramCount += 2;
-    }
-
-    query += ` ORDER BY ra.created_at DESC LIMIT 500`;
-
-    const result = await pool.query(query, params);
     return NextResponse.json(result.rows);
   } catch (error: any) {
     console.error('Error fetching student records:', error);
