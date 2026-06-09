@@ -88,7 +88,12 @@ export default function Dashboard() {
       setTeachers(Array.isArray(teachersData) ? teachersData : []);
       setStudents(Array.isArray(studentsData) ? studentsData : []);
       setEngagement(engagementData);
-      setRetention({ cohorts: cohortData.cohorts || [], churn: churnData });
+      setRetention({
+        student_cohorts: cohortData.student_cohorts || [],
+        teacher_cohorts: cohortData.teacher_cohorts || [],
+        repeat_rate: cohortData.repeat_rate || {},
+        churn: churnData
+      });
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -473,21 +478,21 @@ export default function Dashboard() {
         {/* Retention Tab */}
         {activeTab === 'retention' && (
           <>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Student retention</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Retention overview</p>
 
-            {/* Churn Summary */}
+            {/* Key Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Total Students" value={retention?.churn?.churn_summary?.total_active_students || '—'} delta="assessed" deltaDir="neutral" />
+              <MetricCard label="Total Students Assessed" value={retention?.repeat_rate?.total_students || '—'} delta="all time" deltaDir="neutral" />
+              <MetricCard label="Students w/ Repeats" value={retention?.repeat_rate?.repeat_students || '—'} delta={`${retention?.repeat_rate?.percentage || 0}% retention`} deltaDir="neutral" />
               <MetricCard label="At-Risk Students" value={retention?.churn?.churn_summary?.at_risk_count || '—'} delta={`${retention?.churn?.churn_summary?.at_risk_pct || 0}% at risk`} deltaDir="neutral" />
               <MetricCard label="Churned Students" value={retention?.churn?.churn_summary?.churned_count || '—'} delta={`${retention?.churn?.churn_summary?.churned_pct || 0}% churned`} deltaDir="neutral" />
-              <MetricCard label="Churn Rate" value={`${(retention?.churn?.churn_summary?.churn_rate_week_over_week || 0) * 100}%`} delta="week over week" deltaDir="neutral" />
             </div>
 
-            {/* Cohort Retention Curve */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Cohort retention curve</p>
+            {/* Student Cohort Retention Curve */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Student cohort retention curve</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={(retention?.cohorts || []).reverse()}>
+                <LineChart data={(retention?.student_cohorts || []).reverse()}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                   <XAxis
                     dataKey="cohort_week"
@@ -512,6 +517,37 @@ export default function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
               <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of students from each cohort who remained active in subsequent weeks</p>
+            </div>
+
+            {/* Teacher Cohort Retention Curve */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Teacher cohort retention curve</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={(retention?.teacher_cohorts || []).reverse()}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                  <XAxis
+                    dataKey="cohort_week"
+                    tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(date) => {
+                      const d = new Date(date);
+                      return `${d.getMonth() + 1}/${d.getDate()}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
+                    formatter={(value: any) => `${value}%`}
+                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                  />
+                  <Line type="monotone" dataKey="week0_pct" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} name="Week 0" />
+                  <Line type="monotone" dataKey="week1_pct" stroke="#06B6D4" strokeWidth={2} dot={{ r: 3 }} name="Week 1" />
+                  <Line type="monotone" dataKey="week2_pct" stroke="#EC4899" strokeWidth={2} dot={{ r: 3 }} name="Week 2" />
+                  <Line type="monotone" dataKey="week4_pct" stroke="#F97316" strokeWidth={2} dot={{ r: 3 }} name="Week 4" />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of teachers from each cohort who remained active in subsequent weeks</p>
             </div>
 
             {/* At-Risk Students */}
