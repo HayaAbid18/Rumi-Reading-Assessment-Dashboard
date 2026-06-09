@@ -18,6 +18,7 @@ export default function Dashboard() {
 
   const [metrics, setMetrics] = useState<any>(null);
   const [engagement, setEngagement] = useState<any>(null);
+  const [retention, setRetention] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
 
@@ -65,24 +66,29 @@ export default function Dashboard() {
       const { startDate, endDate } = getDateRange(timeRange);
       const dateParams = `&startDate=${startDate}&endDate=${endDate}`;
 
-      const [metricsRes, teachersRes, studentsRes, engagementRes] = await Promise.all([
+      const [metricsRes, teachersRes, studentsRes, engagementRes, cohortRes, churnRes] = await Promise.all([
         fetch(`/api/metrics?region=${selectedRegion}${dateParams}`),
         fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}${dateParams}`),
         fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}${dateParams}`),
-        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}`)
+        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}`),
+        fetch(`/api/retention/cohort?region=${selectedRegion}&school=${selectedSchool}${dateParams}`),
+        fetch(`/api/retention/churn?region=${selectedRegion}&school=${selectedSchool}`)
       ]);
 
-      const [metricsData, teachersData, studentsData, engagementData] = await Promise.all([
+      const [metricsData, teachersData, studentsData, engagementData, cohortData, churnData] = await Promise.all([
         metricsRes.json(),
         teachersRes.json(),
         studentsRes.json(),
-        engagementRes.json()
+        engagementRes.json(),
+        cohortRes.json(),
+        churnRes.json()
       ]);
 
       setMetrics(metricsData);
       setTeachers(Array.isArray(teachersData) ? teachersData : []);
       setStudents(Array.isArray(studentsData) ? studentsData : []);
       setEngagement(engagementData);
+      setRetention({ cohorts: cohortData.cohorts || [], churn: churnData });
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -266,7 +272,7 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <div className="flex gap-6 mb-6 border-b border-gray-200 pb-3">
-          {['overview', 'engagement', 'teachers', 'students'].map((tab) => (
+          {['overview', 'engagement', 'retention', 'teachers', 'students'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -460,6 +466,93 @@ export default function Dashboard() {
                   <Bar dataKey="dau" radius={[4, 4, 0, 0]} fill="#10B981" />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </>
+        )}
+
+        {/* Retention Tab */}
+        {activeTab === 'retention' && (
+          <>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Student retention</p>
+
+            {/* Churn Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <MetricCard label="Total Students" value={retention?.churn?.churn_summary?.total_active_students || '—'} delta="assessed" deltaDir="neutral" />
+              <MetricCard label="At-Risk Students" value={retention?.churn?.churn_summary?.at_risk_count || '—'} delta={`${retention?.churn?.churn_summary?.at_risk_pct || 0}% at risk`} deltaDir="neutral" />
+              <MetricCard label="Churned Students" value={retention?.churn?.churn_summary?.churned_count || '—'} delta={`${retention?.churn?.churn_summary?.churned_pct || 0}% churned`} deltaDir="neutral" />
+              <MetricCard label="Churn Rate" value={`${(retention?.churn?.churn_summary?.churn_rate_week_over_week || 0) * 100}%`} delta="week over week" deltaDir="neutral" />
+            </div>
+
+            {/* Cohort Retention Curve */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Cohort retention curve</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={(retention?.cohorts || []).reverse()}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                  <XAxis
+                    dataKey="cohort_week"
+                    tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(date) => {
+                      const d = new Date(date);
+                      return `${d.getMonth() + 1}/${d.getDate()}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
+                    formatter={(value: any) => `${value}%`}
+                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                  />
+                  <Line type="monotone" dataKey="week0_pct" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} name="Week 0" />
+                  <Line type="monotone" dataKey="week1_pct" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} name="Week 1" />
+                  <Line type="monotone" dataKey="week2_pct" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} name="Week 2" />
+                  <Line type="monotone" dataKey="week4_pct" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} name="Week 4" />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of students from each cohort who remained active in subsequent weeks</p>
+            </div>
+
+            {/* At-Risk Students */}
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">At-risk students (inactive 7-14 days)</p>
+            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+              {retention?.churn?.at_risk_users && retention.churn.at_risk_users.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      <th className="text-left px-5 py-3">Student ID</th>
+                      <th className="text-left px-4 py-3">Days Inactive</th>
+                      <th className="text-left px-4 py-3">Total Assessments</th>
+                      <th className="text-left px-4 py-3">Active Days</th>
+                      <th className="text-left px-4 py-3">Risk Score</th>
+                      <th className="text-left px-4 py-3">Last Active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {retention.churn.at_risk_users.map((user: any, i: number) => (
+                      <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-amber-50/30`}>
+                        <td className="px-5 py-3 font-medium text-gray-900">{user.student_identifier}</td>
+                        <td className="px-4 py-3 text-gray-600">{user.days_inactive}</td>
+                        <td className="px-4 py-3 text-gray-600">{user.total_assessments}</td>
+                        <td className="px-4 py-3 text-gray-600">{user.active_days}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                            user.risk_score > 0.8 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            {(user.risk_score * 100).toFixed(0)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">{new Date(user.last_active_date).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="px-5 py-4 text-center text-gray-400">
+                  No at-risk students in this period
+                </div>
+              )}
             </div>
           </>
         )}
