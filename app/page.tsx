@@ -10,6 +10,7 @@ import SidePanel from '@/components/panels/SidePanel';
 import CohortMemberList from '@/components/panels/CohortMemberList';
 import UserAssessmentHistory from '@/components/panels/UserAssessmentHistory';
 import EngagementUserList from '@/components/panels/EngagementUserList';
+import TeacherCohortMemberList from '@/components/panels/TeacherCohortMemberList';
 
 export default function Dashboard() {
   const [regions, setRegions] = useState<string[]>([]);
@@ -28,7 +29,7 @@ export default function Dashboard() {
 
   // Panel state for drill-down
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | null>(null);
+  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | 'teacher-cohort' | null>(null);
   const [panelData, setPanelData] = useState<any>(null);
 
   useEffect(() => {
@@ -124,6 +125,24 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error('Error fetching cohort members:', error);
+      setPanelData(null);
+    }
+  };
+
+  const fetchTeacherCohortMembers = async (cohortWeek: string) => {
+    try {
+      setPanelOpen(true);
+      setPanelType('teacher-cohort');
+      const res = await fetch(`/api/retention/teacher-cohort-users?cohort_week=${cohortWeek}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPanelData({
+        cohort_week: cohortWeek,
+        teachers: data.teachers || [],
+        teacher_count: data.teacher_count || 0
+      });
+    } catch (error) {
+      console.error('Error fetching teacher cohort members:', error);
       setPanelData(null);
     }
   };
@@ -685,7 +704,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {(retention?.teacher_cohorts || []).slice(0, 8).map((cohort: any, i: number) => (
-                    <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'}`}>
+                    <tr key={i} onClick={() => fetchTeacherCohortMembers(cohort.cohort_week)} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-purple-50 cursor-pointer transition-colors`}>
                       <td className="px-4 py-3 font-medium text-gray-900">{new Date(cohort.cohort_week).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-gray-600">{cohort.cohort_size}</td>
                       <td className="px-4 py-3 text-center font-semibold text-blue-600">{cohort.week0_pct}%</td>
@@ -845,6 +864,8 @@ export default function Dashboard() {
         title={
           panelType === 'cohort'
             ? `Cohort ${panelData?.cohort_week ? new Date(panelData.cohort_week).toLocaleDateString() : ''}`
+            : panelType === 'teacher-cohort'
+            ? `Teacher Cohort ${panelData?.cohort_week ? new Date(panelData.cohort_week).toLocaleDateString() : ''}`
             : panelType === 'engagement'
             ? panelData?.title || 'Engagement Metrics'
             : 'Student History'
@@ -870,6 +891,11 @@ export default function Dashboard() {
             metric={panelData.metric}
             students={panelData.students}
             onSelectStudent={handleSelectStudent}
+          />
+        ) : panelType === 'teacher-cohort' && panelData ? (
+          <TeacherCohortMemberList
+            cohortWeek={panelData.cohort_week}
+            teachers={panelData.teachers}
           />
         ) : null}
       </SidePanel>
