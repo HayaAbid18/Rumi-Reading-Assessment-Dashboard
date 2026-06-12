@@ -432,10 +432,37 @@ export default function Dashboard() {
 
             {/* Key Engagement Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Students Assessed This Week" value={engagement?.current_wau || '—'} delta={`${Math.round((engagement?.repeat_rate?.percentage || 0) * 10) / 10}% repeat rate`} deltaDir="neutral" />
-              <MetricCard label="Assessments per Student" value={`${engagement?.frequency?.avg_assessments_per_student_per_week || '—'}`} delta="per week" deltaDir="neutral" />
-              <MetricCard label="Avg Session Time" value={`${engagement?.duration?.avg_minutes || '—'}m`} delta="per assessment" deltaDir="neutral" />
-              <MetricCard label="Growth Attempts" value={`${engagement?.growth?.growth_attempt_pct || '—'}%`} delta={`${engagement?.growth?.students_attempting_growth || 0} students`} deltaDir="neutral" />
+              <div
+                onClick={() => {
+                  const today = new Date();
+                  const startOfWeek = new Date(today);
+                  startOfWeek.setDate(today.getDate() - today.getDay());
+                  const endOfWeek = new Date(startOfWeek);
+                  endOfWeek.setDate(startOfWeek.getDate() + 6);
+                  const weekStr = startOfWeek.toISOString().split('T')[0];
+                  openEngagementDrill('wau-users', 'this week', 'Students Assessed This Week', `region=${selectedRegion}&school=${selectedSchool}&week=${weekStr}`);
+                }}
+                className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Students Assessed This Week</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{engagement?.current_wau || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-emerald-600">↑ {Math.round((engagement?.repeat_rate?.percentage || 0) * 10) / 10}% repeat rate</p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Assessments per Student</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{engagement?.frequency?.avg_assessments_per_student_per_week || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400"> per week</p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Avg Session Time</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{engagement?.duration?.avg_minutes || '—'}m</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400"> per assessment</p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Growth Attempts</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{engagement?.growth?.growth_attempt_pct || '—'}%</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400"> {engagement?.growth?.students_attempting_growth || 0} students</p>
+              </div>
             </div>
 
             {/* Engagement Metrics Breakdown */}
