@@ -6,6 +6,9 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell
 } from 'recharts';
+import SidePanel from '@/components/panels/SidePanel';
+import CohortMemberList from '@/components/panels/CohortMemberList';
+import UserAssessmentHistory from '@/components/panels/UserAssessmentHistory';
 
 export default function Dashboard() {
   const [regions, setRegions] = useState<string[]>([]);
@@ -21,6 +24,11 @@ export default function Dashboard() {
   const [retention, setRetention] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+
+  // Panel state for drill-down
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelType, setPanelType] = useState<'cohort' | 'user' | null>(null);
+  const [panelData, setPanelData] = useState<any>(null);
 
   useEffect(() => {
     fetchRegions();
@@ -100,6 +108,29 @@ export default function Dashboard() {
   };
 
   const toNum = (val: any) => parseFloat(String(val || 0));
+
+  const fetchCohortMembers = async (cohortWeek: string) => {
+    try {
+      setPanelOpen(true);
+      setPanelType('cohort');
+      const res = await fetch(`/api/retention/cohort-users?cohort_week=${cohortWeek}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPanelData({
+        cohort_week: cohortWeek,
+        students: data.students || [],
+        student_count: data.student_count || 0
+      });
+    } catch (error) {
+      console.error('Error fetching cohort members:', error);
+      setPanelData(null);
+    }
+  };
+
+  const handleSelectStudent = (studentId: string) => {
+    setPanelType('user');
+    setPanelData({ student_identifier: studentId });
+  };
 
   const getDateRange = (range: string) => {
     const today = new Date();
@@ -535,7 +566,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {(retention?.student_cohorts || []).slice(0, 8).map((cohort: any, i: number) => (
-                    <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'}`}>
+                    <tr key={i} onClick={() => fetchCohortMembers(cohort.cohort_week)} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-blue-50 cursor-pointer transition-colors`}>
                       <td className="px-4 py-3 font-medium text-gray-900">{new Date(cohort.cohort_week).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-gray-600">{cohort.cohort_size}</td>
                       <td className="px-4 py-3 text-center font-semibold text-blue-600">{cohort.week0_pct}%</td>
@@ -631,7 +662,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {retention.churn.at_risk_users.map((user: any, i: number) => (
-                      <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-amber-50/30`}>
+                      <tr key={i} onClick={() => handleSelectStudent(user.student_identifier)} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-amber-50/30 cursor-pointer transition-colors`}>
                         <td className="px-5 py-3 font-medium text-gray-900">{user.student_identifier}</td>
                         <td className="px-4 py-3 text-gray-600">{user.days_inactive}</td>
                         <td className="px-4 py-3 text-gray-600">{user.total_assessments}</td>
@@ -746,6 +777,33 @@ export default function Dashboard() {
         </p>
 
       </div>
+
+      {/* Side Panel for Drill-down */}
+      <SidePanel
+        isOpen={panelOpen}
+        onClose={() => {
+          setPanelOpen(false);
+          setPanelType(null);
+          setPanelData(null);
+        }}
+        title={panelType === 'cohort' ? `Cohort ${panelData?.cohort_week ? new Date(panelData.cohort_week).toLocaleDateString() : ''}` : 'Student History'}
+        breadcrumbs={panelType === 'user' ? [
+          { label: 'Retention', onClick: () => setPanelType('cohort') }
+        ] : []}
+      >
+        {panelType === 'cohort' && panelData ? (
+          <CohortMemberList
+            cohortWeek={panelData.cohort_week}
+            students={panelData.students}
+            onSelectStudent={handleSelectStudent}
+          />
+        ) : panelType === 'user' && panelData ? (
+          <UserAssessmentHistory
+            studentIdentifier={panelData.student_identifier}
+            onBack={() => setPanelType('cohort')}
+          />
+        ) : null}
+      </SidePanel>
     </div>
   );
 }
