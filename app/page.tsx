@@ -11,6 +11,7 @@ import CohortMemberList from '@/components/panels/CohortMemberList';
 import UserAssessmentHistory from '@/components/panels/UserAssessmentHistory';
 import EngagementUserList from '@/components/panels/EngagementUserList';
 import TeacherCohortMemberList from '@/components/panels/TeacherCohortMemberList';
+import MetricContributorsList from '@/components/panels/MetricContributorsList';
 
 export default function Dashboard() {
   const [regions, setRegions] = useState<string[]>([]);
@@ -29,7 +30,7 @@ export default function Dashboard() {
 
   // Panel state for drill-down
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | 'teacher-cohort' | null>(null);
+  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | 'teacher-cohort' | 'overview' | null>(null);
   const [panelData, setPanelData] = useState<any>(null);
 
   useEffect(() => {
@@ -173,6 +174,26 @@ export default function Dashboard() {
 
   const openEngagementDrill = (endpoint: string, metric: string, title: string, params: string) => {
     fetchEngagementUsers(endpoint, metric, title, params);
+  };
+
+  const fetchMetricContributors = async (metric: string, title: string) => {
+    try {
+      setPanelOpen(true);
+      setPanelType('overview');
+      const { startDate, endDate } = getDateRange(timeRange);
+      const res = await fetch(`/api/overview/metric-contributors?region=${selectedRegion}&school=${selectedSchool}&startDate=${startDate}&endDate=${endDate}&metric=${metric}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPanelData({
+        metric,
+        title,
+        students: data.students || [],
+        student_count: data.student_count || 0
+      });
+    } catch (error) {
+      console.error('Error fetching metric contributors:', error);
+      setPanelData(null);
+    }
   };
 
   const getDateRange = (range: string) => {
@@ -372,8 +393,22 @@ export default function Dashboard() {
             {/* Performance */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Performance</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Avg score" value={`${metrics?.performance?.avg_wcpm || '—'}`} delta="↑ 4pts vs prev week" deltaDir="up" />
-              <MetricCard label="Answer accuracy" value={`${metrics?.performance?.avg_accuracy != null ? toNum(metrics.performance.avg_accuracy).toFixed(0) : '—'}%`} delta="↑ 2% vs prev week" deltaDir="up" />
+              <div
+                onClick={() => fetchMetricContributors('wcpm', 'Top Students by Avg WCPM')}
+                className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Avg score</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{metrics?.performance?.avg_wcpm || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-emerald-600">↑ 4pts vs prev week</p>
+              </div>
+              <div
+                onClick={() => fetchMetricContributors('accuracy', 'Top Students by Accuracy')}
+                className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Answer accuracy</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{metrics?.performance?.avg_accuracy != null ? toNum(metrics.performance.avg_accuracy).toFixed(0) : '—'}%</p>
+                <p className="text-[11px] mt-2 font-medium text-emerald-600">↑ 2% vs prev week</p>
+              </div>
               <MetricCard label="Avg time on test" value={`${metrics?.completion?.avg_time_seconds != null ? (toNum(metrics.completion.avg_time_seconds) / 60).toFixed(1) : '—'}m`} delta="↓ 0.5m vs prev week" deltaDir="down" />
               <MetricCard label="Score improvement" value={`${metrics?.performance?.avg_comprehension != null ? toNum(metrics.performance.avg_comprehension).toFixed(0) : '—'}%`} delta="vs week 1 baseline" deltaDir="up" />
             </div>
@@ -868,6 +903,8 @@ export default function Dashboard() {
             ? `Teacher Cohort ${panelData?.cohort_week ? new Date(panelData.cohort_week).toLocaleDateString() : ''}`
             : panelType === 'engagement'
             ? panelData?.title || 'Engagement Metrics'
+            : panelType === 'overview'
+            ? panelData?.title || 'Metric Contributors'
             : 'Student History'
         }
         breadcrumbs={panelType === 'user' ? [
@@ -896,6 +933,13 @@ export default function Dashboard() {
           <TeacherCohortMemberList
             cohortWeek={panelData.cohort_week}
             teachers={panelData.teachers}
+          />
+        ) : panelType === 'overview' && panelData ? (
+          <MetricContributorsList
+            metric={panelData.metric}
+            title={panelData.title}
+            students={panelData.students}
+            onSelectStudent={handleSelectStudent}
           />
         ) : null}
       </SidePanel>
