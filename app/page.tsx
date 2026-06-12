@@ -9,6 +9,7 @@ import {
 import SidePanel from '@/components/panels/SidePanel';
 import CohortMemberList from '@/components/panels/CohortMemberList';
 import UserAssessmentHistory from '@/components/panels/UserAssessmentHistory';
+import EngagementUserList from '@/components/panels/EngagementUserList';
 
 export default function Dashboard() {
   const [regions, setRegions] = useState<string[]>([]);
@@ -27,7 +28,7 @@ export default function Dashboard() {
 
   // Panel state for drill-down
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelType, setPanelType] = useState<'cohort' | 'user' | null>(null);
+  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | null>(null);
   const [panelData, setPanelData] = useState<any>(null);
 
   useEffect(() => {
@@ -130,6 +131,29 @@ export default function Dashboard() {
   const handleSelectStudent = (studentId: string) => {
     setPanelType('user');
     setPanelData({ student_identifier: studentId });
+  };
+
+  const fetchEngagementUsers = async (endpoint: string, metric: string, title: string, params: string) => {
+    try {
+      setPanelOpen(true);
+      setPanelType('engagement');
+      const res = await fetch(`/api/engagement/${endpoint}?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPanelData({
+        title,
+        metric,
+        students: data.students || [],
+        student_count: data.student_count || 0
+      });
+    } catch (error) {
+      console.error('Error fetching engagement users:', error);
+      setPanelData(null);
+    }
+  };
+
+  const openEngagementDrill = (endpoint: string, metric: string, title: string, params: string) => {
+    fetchEngagementUsers(endpoint, metric, title, params);
   };
 
   const getDateRange = (range: string) => {
@@ -433,7 +457,10 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div
+                onClick={() => openEngagementDrill('repeat-users', 'last_4_weeks', 'Students with Repeat Assessments', `region=${selectedRegion}&school=${selectedSchool}&startDate=${getDateRange(timeRange).startDate}&endDate=${getDateRange(timeRange).endDate}`)}
+                className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md cursor-pointer transition-shadow"
+              >
                 <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">Repeat engagement</p>
                 <div>
                   <p className="text-2xl font-mono font-semibold text-gray-900">{engagement?.repeat_rate?.repeat_students || '—'}</p>
@@ -786,9 +813,15 @@ export default function Dashboard() {
           setPanelType(null);
           setPanelData(null);
         }}
-        title={panelType === 'cohort' ? `Cohort ${panelData?.cohort_week ? new Date(panelData.cohort_week).toLocaleDateString() : ''}` : 'Student History'}
+        title={
+          panelType === 'cohort'
+            ? `Cohort ${panelData?.cohort_week ? new Date(panelData.cohort_week).toLocaleDateString() : ''}`
+            : panelType === 'engagement'
+            ? panelData?.title || 'Engagement Metrics'
+            : 'Student History'
+        }
         breadcrumbs={panelType === 'user' ? [
-          { label: 'Retention', onClick: () => setPanelType('cohort') }
+          { label: panelData?.from_engagement ? 'Engagement' : 'Retention', onClick: () => setPanelType(panelData?.from_engagement ? 'engagement' : 'cohort') }
         ] : []}
       >
         {panelType === 'cohort' && panelData ? (
@@ -801,6 +834,13 @@ export default function Dashboard() {
           <UserAssessmentHistory
             studentIdentifier={panelData.student_identifier}
             onBack={() => setPanelType('cohort')}
+          />
+        ) : panelType === 'engagement' && panelData ? (
+          <EngagementUserList
+            title={panelData.title}
+            metric={panelData.metric}
+            students={panelData.students}
+            onSelectStudent={handleSelectStudent}
           />
         ) : null}
       </SidePanel>
