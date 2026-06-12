@@ -16,14 +16,14 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(
       `WITH teacher_cohorts AS (
         SELECT
-          u.id as teacher_id,
-          u.first_name || ' ' || u.last_name as teacher_name,
+          ra.user_id as teacher_id,
+          COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as teacher_name,
           u.school_name,
           DATE_TRUNC('week', MIN(ra.created_at))::date as cohort_week
         FROM reading_assessments ra
         JOIN users u ON ra.user_id = u.id
-        WHERE ra.status = 'completed' AND u.role = 'teacher'
-        GROUP BY u.id, u.first_name, u.last_name, u.school_name
+        WHERE ra.status = 'completed'
+        GROUP BY ra.user_id, u.first_name, u.last_name, u.school_name
       )
       SELECT
         tc.teacher_id,
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
           ELSE 'churned'
         END as status
       FROM teacher_cohorts tc
-      LEFT JOIN reading_assessments ra ON ra.user_id = tc.teacher_id AND ra.status = 'completed'
+      JOIN reading_assessments ra ON ra.user_id = tc.teacher_id AND ra.status = 'completed'
       WHERE tc.cohort_week = $1::date
       GROUP BY tc.teacher_id, tc.teacher_name, tc.school_name
       ORDER BY total_assessments DESC`,
