@@ -435,12 +435,14 @@ export default function Dashboard() {
               <div
                 onClick={() => {
                   const today = new Date();
+                  const dayOfWeek = today.getDay();
                   const startOfWeek = new Date(today);
-                  startOfWeek.setDate(today.getDate() - today.getDay());
+                  startOfWeek.setDate(today.getDate() - dayOfWeek);
                   const endOfWeek = new Date(startOfWeek);
                   endOfWeek.setDate(startOfWeek.getDate() + 6);
-                  const weekStr = startOfWeek.toISOString().split('T')[0];
-                  openEngagementDrill('wau-users', 'this week', 'Students Assessed This Week', `region=${selectedRegion}&school=${selectedSchool}&week=${weekStr}`);
+                  const startStr = startOfWeek.toISOString().split('T')[0];
+                  const endStr = endOfWeek.toISOString().split('T')[0];
+                  openEngagementDrill('wau-users', 'this week', 'Students Assessed This Week', `region=${selectedRegion}&school=${selectedSchool}&startDate=${startStr}&endDate=${endStr}`);
                 }}
                 className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
               >

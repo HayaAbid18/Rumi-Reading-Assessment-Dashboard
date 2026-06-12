@@ -4,12 +4,13 @@ import pool from '@/lib/db';
 export async function GET(request: NextRequest) {
   const region = request.nextUrl.searchParams.get('region');
   const school = request.nextUrl.searchParams.get('school');
-  const week = request.nextUrl.searchParams.get('week');
+  const startDate = request.nextUrl.searchParams.get('startDate');
+  const endDate = request.nextUrl.searchParams.get('endDate');
 
   try {
-    if (!week) {
+    if (!startDate || !endDate) {
       return NextResponse.json(
-        { error: 'week parameter is required' },
+        { error: 'startDate and endDate parameters are required' },
         { status: 400 }
       );
     }
@@ -32,10 +33,11 @@ export async function GET(request: NextRequest) {
       params.push(school);
     }
 
-    params.push(week);
-    const weekFilter = `DATE_TRUNC('week', ra.created_at)::date = $${params.length}`;
+    filters.push(`ra.created_at::date >= $${params.length + 1}`);
+    filters.push(`ra.created_at::date <= $${params.length + 2}`);
+    params.push(startDate, endDate);
 
-    const baseFilter = `WHERE ${filters.join(' AND ')} AND ${weekFilter}`;
+    const baseFilter = `WHERE ${filters.join(' AND ')}`;
 
     // Get all students active in this week with their engagement data
     const result = await pool.query(
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
-      week,
+      date_range: { start: startDate, end: endDate },
       student_count: result.rows.length,
       students: result.rows
     });
