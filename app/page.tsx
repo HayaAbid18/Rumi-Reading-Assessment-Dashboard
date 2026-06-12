@@ -492,7 +492,7 @@ export default function Dashboard() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Student cohort retention curve</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={(retention?.student_cohorts || []).reverse()}>
+                <LineChart data={(retention?.student_cohorts || []).reverse()} margin={{ bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                   <XAxis
                     dataKey="cohort_week"
@@ -519,11 +519,43 @@ export default function Dashboard() {
               <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of students from each cohort who remained active in subsequent weeks</p>
             </div>
 
+            {/* Student Cohort Data Table */}
+            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <th className="text-left px-4 py-3">Cohort Week</th>
+                    <th className="text-left px-4 py-3">Size</th>
+                    <th className="text-center px-4 py-3">W0</th>
+                    <th className="text-center px-4 py-3">W1</th>
+                    <th className="text-center px-4 py-3">W2</th>
+                    <th className="text-center px-4 py-3">W4</th>
+                    <th className="text-left px-4 py-3">Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(retention?.student_cohorts || []).slice(0, 8).map((cohort: any, i: number) => (
+                    <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{new Date(cohort.cohort_week).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-gray-600">{cohort.cohort_size}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-blue-600">{cohort.week0_pct}%</td>
+                      <td className="px-4 py-3 text-center font-semibold text-green-600">{cohort.week1_pct}%</td>
+                      <td className="px-4 py-3 text-center font-semibold text-amber-600">{cohort.week2_pct}%</td>
+                      <td className="px-4 py-3 text-center font-semibold text-red-600">{cohort.week4_pct}%</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {cohort.week4_pct > 20 ? '📈 Good' : cohort.week4_pct > 10 ? '➡️ Fair' : '📉 Poor'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
             {/* Teacher Cohort Retention Curve */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Teacher cohort retention curve</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={(retention?.teacher_cohorts || []).reverse()}>
+                <LineChart data={(retention?.teacher_cohorts || []).reverse()} margin={{ bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                   <XAxis
                     dataKey="cohort_week"
@@ -548,6 +580,38 @@ export default function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
               <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of teachers from each cohort who remained active in subsequent weeks</p>
+            </div>
+
+            {/* Teacher Cohort Data Table */}
+            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <th className="text-left px-4 py-3">Cohort Week</th>
+                    <th className="text-left px-4 py-3">Size</th>
+                    <th className="text-center px-4 py-3">W0</th>
+                    <th className="text-center px-4 py-3">W1</th>
+                    <th className="text-center px-4 py-3">W2</th>
+                    <th className="text-center px-4 py-3">W4</th>
+                    <th className="text-left px-4 py-3">Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(retention?.teacher_cohorts || []).slice(0, 8).map((cohort: any, i: number) => (
+                    <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{new Date(cohort.cohort_week).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-gray-600">{cohort.cohort_size}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-blue-600">{cohort.week0_pct}%</td>
+                      <td className="px-4 py-3 text-center font-semibold text-green-600">{cohort.week1_pct}%</td>
+                      <td className="px-4 py-3 text-center font-semibold text-amber-600">{cohort.week2_pct}%</td>
+                      <td className="px-4 py-3 text-center font-semibold text-red-600">{cohort.week4_pct}%</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {cohort.week4_pct > 20 ? '📈 Good' : cohort.week4_pct > 10 ? '➡️ Fair' : '📉 Poor'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {/* At-Risk Students */}
