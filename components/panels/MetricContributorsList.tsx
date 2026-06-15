@@ -8,6 +8,7 @@ interface Student {
   total_assessments: number;
   avg_wcpm: number;
   avg_accuracy: number;
+  language?: string;
   on_track_pct?: number;
   on_track_count?: number;
   last_assessment: string;
@@ -67,6 +68,7 @@ export default function MetricContributorsList({
         <thead>
           <tr className="border-b border-gray-200">
             <th className="text-left py-3 px-2 font-semibold text-gray-700">Student ID</th>
+            <th className="text-left py-3 px-2 font-semibold text-gray-700">Language</th>
             <th className="text-center py-3 px-2 font-semibold text-gray-700">Tests</th>
             <th className="text-center py-3 px-2 font-semibold text-gray-700">Avg WCPM</th>
             <th className="text-center py-3 px-2 font-semibold text-gray-700">Accuracy</th>
@@ -81,6 +83,7 @@ export default function MetricContributorsList({
               className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
             >
               <td className="py-3 px-2 font-medium text-gray-900">{student.student_identifier}</td>
+              <td className="py-3 px-2 text-gray-600 text-xs">{student.language || '—'}</td>
               <td className="py-3 px-2 text-center text-gray-600">{student.total_assessments}</td>
               <td className="py-3 px-2 text-center text-gray-600">{student.avg_wcpm}</td>
               <td className="py-3 px-2 text-center text-gray-600">{student.avg_accuracy}%</td>

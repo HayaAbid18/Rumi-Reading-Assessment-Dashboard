@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         MAX(ra.created_at) as last_active_date,
         ROUND(AVG(ra.wcpm)::numeric, 1) as avg_wcpm,
         ROUND(AVG(ra.accuracy_percentage)::numeric, 1) as avg_accuracy,
+        (SELECT ra2.language FROM reading_assessments ra2 WHERE ra2.student_identifier = sc.student_identifier AND ra2.status = 'completed' GROUP BY ra2.language ORDER BY COUNT(*) DESC LIMIT 1) as language,
         CASE
           WHEN MAX(ra.created_at) >= CURRENT_DATE - INTERVAL '7 days' THEN 'active'
           WHEN MAX(ra.created_at) >= CURRENT_DATE - INTERVAL '14 days' THEN 'at-risk'

@@ -147,6 +147,7 @@ export default function UserAssessmentHistory({
           <thead>
             <tr className="border-b-2 border-gray-300">
               <th className="text-left py-2 px-2 font-semibold text-gray-700">Date</th>
+              <th className="text-left py-2 px-2 font-semibold text-gray-700">Language</th>
               <th className="text-center py-2 px-2 font-semibold text-gray-700">WCPM</th>
               <th className="text-center py-2 px-2 font-semibold text-gray-700">Accuracy</th>
               <th className="text-center py-2 px-2 font-semibold text-gray-700">Comp</th>
@@ -157,6 +158,7 @@ export default function UserAssessmentHistory({
             {assessments.map((a, idx) => (
               <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="py-2 px-2 text-gray-900">{new Date(a.created_at).toLocaleDateString()}</td>
+                <td className="py-2 px-2 text-gray-700 text-xs">{a.language}</td>
                 <td className="py-2 px-2 text-center text-gray-700 font-medium">{a.wcpm}</td>
                 <td className="py-2 px-2 text-center text-gray-700">{a.accuracy_percentage}%</td>
                 <td className="py-2 px-2 text-center text-gray-700">{a.comprehension_score}%</td>

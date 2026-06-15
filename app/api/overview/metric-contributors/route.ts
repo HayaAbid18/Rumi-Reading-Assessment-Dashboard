@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         ROUND(AVG(ra.wcpm)::numeric, 1) as avg_wcpm,
         ROUND(AVG(ra.accuracy_percentage)::numeric, 1) as avg_accuracy,
         ROUND(100.0 * COUNT(CASE WHEN ra.on_track THEN 1 END) / COUNT(*), 1) as on_track_pct,
+        (SELECT ra2.language FROM reading_assessments ra2 WHERE ra2.student_identifier = ra.student_identifier ${filters.length > 0 ? `AND ${filters.slice(0, -2).join(' AND ')}` : ''} GROUP BY ra2.language ORDER BY COUNT(*) DESC LIMIT 1) as language,
         MAX(ra.created_at) as last_assessment
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id

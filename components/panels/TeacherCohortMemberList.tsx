@@ -8,6 +8,7 @@ interface Teacher {
   unique_students: number;
   avg_wcpm: number;
   avg_accuracy: number;
+  language: string;
   status: 'active' | 'at-risk' | 'churned';
 }
 
@@ -49,6 +50,7 @@ export default function TeacherCohortMemberList({
           <tr className="border-b border-gray-200">
             <th className="text-left py-3 px-2 font-semibold text-gray-700">Teacher Name</th>
             <th className="text-left py-3 px-2 font-semibold text-gray-700">School</th>
+            <th className="text-left py-3 px-2 font-semibold text-gray-700">Language</th>
             <th className="text-center py-3 px-2 font-semibold text-gray-700">Tests</th>
             <th className="text-center py-3 px-2 font-semibold text-gray-700">Students</th>
             <th className="text-center py-3 px-2 font-semibold text-gray-700">Avg WCPM</th>
@@ -64,6 +66,7 @@ export default function TeacherCohortMemberList({
             >
               <td className="py-3 px-2 font-medium text-gray-900">{teacher.teacher_name}</td>
               <td className="py-3 px-2 text-gray-600 text-xs">{teacher.school_name}</td>
+              <td className="py-3 px-2 text-gray-600 text-xs">{teacher.language}</td>
               <td className="py-3 px-2 text-center text-gray-600">{teacher.total_assessments}</td>
               <td className="py-3 px-2 text-center text-gray-600">{teacher.unique_students}</td>
               <td className="py-3 px-2 text-center text-gray-600">{teacher.avg_wcpm}</td>
