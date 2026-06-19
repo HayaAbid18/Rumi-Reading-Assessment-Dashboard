@@ -632,8 +632,8 @@ export default function Dashboard() {
             {/* Student Cohort Retention Curve */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Student cohort retention curve</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
-              <ResponsiveContainer width="100%" height={Math.max(400, (retention?.student_cohorts || []).length * 30)}>
-                <LineChart data={(retention?.student_cohorts || []).reverse()} layout="vertical" margin={{ left: 120, right: 20, top: 10, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height={Math.max(600, (retention?.student_cohorts || []).length * 40)}>
+                <LineChart data={(retention?.student_cohorts || []).reverse()} layout="vertical" margin={{ left: 150, right: 20, top: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                   <XAxis type="number" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={[0, 100]} />
                   <YAxis
@@ -696,8 +696,8 @@ export default function Dashboard() {
             {/* Teacher Cohort Retention Curve */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Teacher cohort retention curve</p>
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
-              <ResponsiveContainer width="100%" height={Math.max(400, (retention?.teacher_cohorts || []).length * 30)}>
-                <LineChart data={(retention?.teacher_cohorts || []).reverse()} layout="vertical" margin={{ left: 120, right: 20, top: 10, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height={Math.max(600, (retention?.teacher_cohorts || []).length * 40)}>
+                <LineChart data={(retention?.teacher_cohorts || []).reverse()} layout="vertical" margin={{ left: 150, right: 20, top: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                   <XAxis type="number" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={[0, 100]} />
                   <YAxis
