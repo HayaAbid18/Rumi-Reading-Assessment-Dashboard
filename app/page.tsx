@@ -13,6 +13,7 @@ import EngagementUserList from '@/components/panels/EngagementUserList';
 import TeacherCohortMemberList from '@/components/panels/TeacherCohortMemberList';
 import MetricContributorsList from '@/components/panels/MetricContributorsList';
 import RetentionHeatmap from '@/components/panels/RetentionHeatmap';
+import TeacherDetail from '@/components/panels/TeacherDetail';
 
 export default function Dashboard() {
   const [regions, setRegions] = useState<string[]>([]);
@@ -31,7 +32,7 @@ export default function Dashboard() {
 
   // Panel state for drill-down
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | 'teacher-cohort' | 'overview' | null>(null);
+  const [panelType, setPanelType] = useState<'cohort' | 'user' | 'engagement' | 'teacher-cohort' | 'overview' | 'teacher' | null>(null);
   const [panelData, setPanelData] = useState<any>(null);
 
   useEffect(() => {
@@ -175,6 +176,12 @@ export default function Dashboard() {
 
   const openEngagementDrill = (endpoint: string, metric: string, title: string, params: string) => {
     fetchEngagementUsers(endpoint, metric, title, params);
+  };
+
+  const openTeacherDetail = (teacherName: string) => {
+    setPanelOpen(true);
+    setPanelType('teacher');
+    setPanelData({ teacher_name: teacherName });
   };
 
   const fetchMetricContributors = async (metric: string, title: string) => {
@@ -780,7 +787,7 @@ export default function Dashboard() {
                     </tr>
                   ) : (
                     teachers.map((t, i) => (
-                      <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-blue-50/30`}>
+                      <tr key={i} onClick={() => openTeacherDetail(t.teacher_name)} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-blue-50/30 cursor-pointer transition-colors`}>
                         <td className="px-5 py-3 font-medium">{t.school_name}</td>
                         <td className="px-4 py-3">{t.teacher_name}</td>
                         <td className="px-4 py-3 text-gray-500">{t.assessments_count}</td>
@@ -822,7 +829,7 @@ export default function Dashboard() {
                     </tr>
                   ) : (
                     students.map((s, i) => (
-                      <tr key={i} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-blue-50/30`}>
+                      <tr key={i} onClick={() => handleSelectStudent(s.student_identifier)} className={`border-t border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/40'} hover:bg-blue-50/30 cursor-pointer transition-colors`}>
                         <td className="px-5 py-3 font-medium">{s.student_identifier}</td>
                         <td className="px-4 py-3 text-gray-500">Grade {s.grade_level}</td>
                         <td className="px-4 py-3 text-gray-500">{s.teacher_name}</td>
@@ -862,6 +869,8 @@ export default function Dashboard() {
             ? panelData?.title || 'Engagement Metrics'
             : panelType === 'overview'
             ? panelData?.title || 'Metric Contributors'
+            : panelType === 'teacher'
+            ? panelData?.teacher_name || 'Teacher Details'
             : 'Student History'
         }
         breadcrumbs={panelType === 'user' ? [
@@ -897,6 +906,15 @@ export default function Dashboard() {
             title={panelData.title}
             students={panelData.students}
             onSelectStudent={handleSelectStudent}
+          />
+        ) : panelType === 'teacher' && panelData ? (
+          <TeacherDetail
+            teacherName={panelData.teacher_name}
+            onBack={() => {
+              setPanelOpen(false);
+              setPanelType(null);
+              setPanelData(null);
+            }}
           />
         ) : null}
       </SidePanel>
