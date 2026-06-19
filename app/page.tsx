@@ -12,6 +12,7 @@ import UserAssessmentHistory from '@/components/panels/UserAssessmentHistory';
 import EngagementUserList from '@/components/panels/EngagementUserList';
 import TeacherCohortMemberList from '@/components/panels/TeacherCohortMemberList';
 import MetricContributorsList from '@/components/panels/MetricContributorsList';
+import RetentionHeatmap from '@/components/panels/RetentionHeatmap';
 
 export default function Dashboard() {
   const [regions, setRegions] = useState<string[]>([]);
@@ -629,36 +630,13 @@ export default function Dashboard() {
               <MetricCard label="Churned Students" value={retention?.churn?.churn_summary?.churned_count || '—'} delta={`${retention?.churn?.churn_summary?.churned_pct || 0}% churned`} deltaDir="neutral" />
             </div>
 
-            {/* Student Cohort Retention Curve */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Student cohort retention curve</p>
+            {/* Student Cohort Retention Heatmap */}
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
-              <ResponsiveContainer width="100%" height={Math.max(600, (retention?.student_cohorts || []).length * 40)}>
-                <LineChart data={(retention?.student_cohorts || []).reverse()} layout="vertical" margin={{ left: 150, right: 20, top: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                  <YAxis
-                    dataKey="cohort_week"
-                    type="category"
-                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(date) => {
-                      const d = new Date(date);
-                      return `${d.getMonth() + 1}/${d.getDate()}`;
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
-                    formatter={(value: any) => `${value}%`}
-                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                  />
-                  <Line type="monotone" dataKey="week0_pct" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} name="Week 0" />
-                  <Line type="monotone" dataKey="week1_pct" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} name="Week 1" />
-                  <Line type="monotone" dataKey="week2_pct" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} name="Week 2" />
-                  <Line type="monotone" dataKey="week4_pct" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} name="Week 4" />
-                </LineChart>
-              </ResponsiveContainer>
-              <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of students from each cohort who remained active in subsequent weeks</p>
+              <RetentionHeatmap
+                title="Student Cohort Retention Heatmap"
+                data={retention?.student_cohorts || []}
+              />
+              <p className="text-[11px] text-gray-400 mt-3">Green = high retention, Red = low retention. Shows % of students from each cohort who remained active in subsequent weeks</p>
             </div>
 
             {/* Student Cohort Data Table */}
@@ -693,36 +671,13 @@ export default function Dashboard() {
               </table>
             </div>
 
-            {/* Teacher Cohort Retention Curve */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Teacher cohort retention curve</p>
+            {/* Teacher Cohort Retention Heatmap */}
             <div className="bg-white border border-gray-100 rounded-xl p-5 mb-6">
-              <ResponsiveContainer width="100%" height={Math.max(600, (retention?.teacher_cohorts || []).length * 40)}>
-                <LineChart data={(retention?.teacher_cohorts || []).reverse()} layout="vertical" margin={{ left: 150, right: 20, top: 10, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                  <YAxis
-                    dataKey="cohort_week"
-                    type="category"
-                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(date) => {
-                      const d = new Date(date);
-                      return `${d.getMonth() + 1}/${d.getDate()}`;
-                    }}
-                  />
-                  <Tooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
-                    formatter={(value: any) => `${value}%`}
-                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                  />
-                  <Line type="monotone" dataKey="week0_pct" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} name="Week 0" />
-                  <Line type="monotone" dataKey="week1_pct" stroke="#06B6D4" strokeWidth={2} dot={{ r: 3 }} name="Week 1" />
-                  <Line type="monotone" dataKey="week2_pct" stroke="#EC4899" strokeWidth={2} dot={{ r: 3 }} name="Week 2" />
-                  <Line type="monotone" dataKey="week4_pct" stroke="#F97316" strokeWidth={2} dot={{ r: 3 }} name="Week 4" />
-                </LineChart>
-              </ResponsiveContainer>
-              <p className="text-[11px] text-gray-400 mt-3 text-center">Shows % of teachers from each cohort who remained active in subsequent weeks</p>
+              <RetentionHeatmap
+                title="Teacher Cohort Retention Heatmap"
+                data={retention?.teacher_cohorts || []}
+              />
+              <p className="text-[11px] text-gray-400 mt-3">Green = high retention, Red = low retention. Shows % of teachers from each cohort who remained active in subsequent weeks</p>
             </div>
 
             {/* Teacher Cohort Data Table */}
