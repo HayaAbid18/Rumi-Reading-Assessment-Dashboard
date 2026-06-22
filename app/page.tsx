@@ -23,6 +23,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeMetric, setActiveMetric] = useState('avg_wcpm');
   const [timeRange, setTimeRange] = useState('last_4_weeks');
+  const [languageFilter, setLanguageFilter] = useState('all');
+  const [allUsers, setAllUsers] = useState<Array<{id: string; name: string}>>([]);
+  const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const [metrics, setMetrics] = useState<any>(null);
   const [engagement, setEngagement] = useState<any>(null);
@@ -37,7 +41,18 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchRegions();
+    fetchUsersList();
+    // Load excluded users from localStorage
+    const savedExcluded = localStorage.getItem('excludedUserIds');
+    if (savedExcluded) {
+      setExcludedUserIds(JSON.parse(savedExcluded));
+    }
   }, []);
+
+  // Save excluded users to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('excludedUserIds', JSON.stringify(excludedUserIds));
+  }, [excludedUserIds]);
 
   useEffect(() => {
     if (selectedRegion && selectedRegion !== 'All') {
@@ -50,7 +65,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAllData();
-  }, [selectedRegion, selectedSchool, timeRange]);
+  }, [selectedRegion, selectedSchool, timeRange, languageFilter, excludedUserIds]);
 
   const fetchRegions = async () => {
     try {
@@ -60,6 +75,17 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching regions:', error);
       setRegions(['All']);
+    }
+  };
+
+  const fetchUsersList = async () => {
+    try {
+      const res = await fetch('/api/users/list');
+      const data = await res.json();
+      setAllUsers(data.users || []);
+    } catch (error) {
+      console.error('Error fetching users list:', error);
+      setAllUsers([]);
     }
   };
 
@@ -78,14 +104,16 @@ export default function Dashboard() {
     try {
       const { startDate, endDate } = getDateRange(timeRange);
       const dateParams = `&startDate=${startDate}&endDate=${endDate}`;
+      const excludedUsersParam = excludedUserIds.length > 0 ? `&excludedUserIds=${excludedUserIds.join(',')}` : '';
+      const filterParams = `${excludedUsersParam}&language=${languageFilter}`;
 
       const [metricsRes, teachersRes, studentsRes, engagementRes, cohortRes, churnRes] = await Promise.all([
-        fetch(`/api/metrics?region=${selectedRegion}${dateParams}`),
-        fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}${dateParams}`),
-        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}${dateParams}`),
-        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}`),
-        fetch(`/api/retention/cohort?region=${selectedRegion}&school=${selectedSchool}${dateParams}`),
-        fetch(`/api/retention/churn?region=${selectedRegion}&school=${selectedSchool}`)
+        fetch(`/api/metrics?region=${selectedRegion}${dateParams}${filterParams}`),
+        fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}${dateParams}${filterParams}`),
+        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}${dateParams}${filterParams}`),
+        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}${filterParams}`),
+        fetch(`/api/retention/cohort?region=${selectedRegion}&school=${selectedSchool}${dateParams}${filterParams}`),
+        fetch(`/api/retention/churn?region=${selectedRegion}&school=${selectedSchool}${filterParams}`)
       ]);
 
       const [metricsData, teachersData, studentsData, engagementData, cohortData, churnData] = await Promise.all([
@@ -357,6 +385,53 @@ export default function Dashboard() {
             <option value="last_4_weeks">Last 4 Weeks</option>
             <option value="last_30_days">Last 30 Days</option>
           </select>
+
+          <select
+            value={languageFilter}
+            onChange={(e) => setLanguageFilter(e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer"
+          >
+            <option value="all">All languages</option>
+            <option value="urdu">Urdu</option>
+            <option value="english">English</option>
+          </select>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer hover:bg-gray-50"
+            >
+              {excludedUserIds.length > 0 ? `Exclude ${excludedUserIds.length} user(s)` : 'Exclude users'}
+            </button>
+
+            {showUserDropdown && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto w-64">
+                {allUsers.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-gray-400">No users found</div>
+                ) : (
+                  <>
+                    {allUsers.map((user) => (
+                      <label key={user.id} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                        <input
+                          type="checkbox"
+                          checked={excludedUserIds.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setExcludedUserIds([...excludedUserIds, user.id]);
+                            } else {
+                              setExcludedUserIds(excludedUserIds.filter(id => id !== user.id));
+                            }
+                          }}
+                          className="cursor-pointer"
+                        />
+                        <span className="text-xs text-gray-700">{user.name}</span>
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Pilot KPIs */}
@@ -402,12 +477,12 @@ export default function Dashboard() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Performance</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               <div
-                onClick={() => fetchMetricContributors('wcpm', 'Top Students by Avg WCPM')}
+                onClick={() => fetchMetricContributors('on_track', 'Top Students by On Track %')}
                 className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow cursor-pointer"
               >
-                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Avg score</p>
-                <p className="text-3xl font-mono font-semibold text-gray-900">{metrics?.performance?.avg_wcpm || '—'}</p>
-                <p className="text-[11px] mt-2 font-medium text-emerald-600">↑ 4pts vs prev week</p>
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">% Students On Track</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{metrics?.performance?.pct_on_track != null ? toNum(metrics.performance.pct_on_track).toFixed(0) : '—'}%</p>
+                <p className="text-[11px] mt-2 font-medium text-emerald-600">↑ 1% vs prev week</p>
               </div>
               <div
                 onClick={() => fetchMetricContributors('accuracy', 'Top Students by Accuracy')}
@@ -443,10 +518,32 @@ export default function Dashboard() {
             {/* Engagement */}
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Usage & engagement</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Students assessed / week" value={metrics?.adoption?.active_students || '—'} delta="↑ 18 this week" deltaDir="up" />
-              <MetricCard label="Total assessments" value={metrics?.completion?.total_assessments || '—'} delta="cumulative" deltaDir="neutral" />
-              <MetricCard label="Repeat rate" value={`${metrics?.completion?.repeat_attempt_rate != null ? toNum(metrics.completion.repeat_attempt_rate).toFixed(0) : '—'}%`} delta="↑ 3% vs prev week" deltaDir="down" />
-              <MetricCard label="Active teachers" value={`${metrics?.adoption?.active_teachers || '—'}`} delta="administering tests" deltaDir="neutral" />
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Students assessed / week</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{metrics?.adoption?.active_students || '—'}</p>
+                {metrics?.adoption?.active_students && metrics?.adoption?.total_students ? (
+                  <p className="text-[11px] mt-2 font-medium text-gray-400">
+                    /{metrics?.adoption?.total_students} ({Math.round(toNum(metrics.adoption.active_students) / toNum(metrics.adoption.total_students) * 100)}%)
+                  </p>
+                ) : (
+                  <p className="text-[11px] mt-2 font-medium text-gray-400">of total students</p>
+                )}
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Total assessments</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{metrics?.completion?.total_assessments || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">cumulative</p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Repeat rate</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{`${metrics?.completion?.repeat_attempt_rate != null ? toNum(metrics.completion.repeat_attempt_rate).toFixed(0) : '—'}%`}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">↑ 3% vs prev week</p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Active teachers</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{`${metrics?.adoption?.active_teachers || '—'}`}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">administering tests</p>
+              </div>
             </div>
 
             {/* Trend chart */}
@@ -564,7 +661,11 @@ export default function Dashboard() {
                 <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-3">Growth mindset</p>
                 <div>
                   <p className="text-2xl font-mono font-semibold text-gray-900">{engagement?.growth?.students_attempting_growth || '—'}</p>
-                  <p className="text-[11px] mt-1 text-gray-400">attempting above level</p>
+                  {engagement?.growth?.students_attempting_growth && engagement?.adoption?.total_students ? (
+                    <p className="text-[11px] mt-1 text-gray-400">/{engagement?.adoption?.total_students} attempting above level</p>
+                  ) : (
+                    <p className="text-[11px] mt-1 text-gray-400">attempting above level</p>
+                  )}
                   <p className="text-xs font-semibold text-blue-600 mt-2">{engagement?.growth?.growth_attempt_pct || '—'}%</p>
                 </div>
               </div>
@@ -631,10 +732,32 @@ export default function Dashboard() {
 
             {/* Key Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <MetricCard label="Total Students Assessed" value={retention?.repeat_rate?.total_students || '—'} delta="all time" deltaDir="neutral" />
-              <MetricCard label="Students w/ Repeats" value={retention?.repeat_rate?.repeat_students || '—'} delta={`${retention?.repeat_rate?.percentage || 0}% retention`} deltaDir="neutral" />
-              <MetricCard label="At-Risk Students" value={retention?.churn?.churn_summary?.at_risk_count || '—'} delta={`${retention?.churn?.churn_summary?.at_risk_pct || 0}% at risk`} deltaDir="neutral" />
-              <MetricCard label="Churned Students" value={retention?.churn?.churn_summary?.churned_count || '—'} delta={`${retention?.churn?.churn_summary?.churned_pct || 0}% churned`} deltaDir="neutral" />
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Total Students Assessed</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{retention?.repeat_rate?.total_students || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">all time</p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Students w/ Repeats</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{retention?.repeat_rate?.repeat_students || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">
+                  /{retention?.repeat_rate?.total_students} ({retention?.repeat_rate?.percentage || 0}%)
+                </p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">At-Risk Students</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{retention?.churn?.churn_summary?.at_risk_count || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">
+                  ({retention?.churn?.churn_summary?.at_risk_pct || 0}% at risk)
+                </p>
+              </div>
+              <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Churned Students</p>
+                <p className="text-3xl font-mono font-semibold text-gray-900">{retention?.churn?.churn_summary?.churned_count || '—'}</p>
+                <p className="text-[11px] mt-2 font-medium text-gray-400">
+                  ({retention?.churn?.churn_summary?.churned_pct || 0}% churned)
+                </p>
+              </div>
             </div>
 
             {/* Student Cohort Retention Heatmap */}

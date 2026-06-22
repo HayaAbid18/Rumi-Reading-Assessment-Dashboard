@@ -4,11 +4,19 @@ import pool from '@/lib/db';
 export async function GET(request: NextRequest) {
   const region = request.nextUrl.searchParams.get('region');
   const school = request.nextUrl.searchParams.get('school');
+  const language = request.nextUrl.searchParams.get('language');
+  const excludedUserIdsParam = request.nextUrl.searchParams.get('excludedUserIds');
+  const excludedUserIds = excludedUserIdsParam ? excludedUserIdsParam.split(',') : [];
 
   try {
     // Build filter conditions
-    const filters: string[] = ["ra.status = 'completed'", "COALESCE(u.is_test_user, false) = false"];
+    const filters: string[] = ["ra.status = 'completed'"];
     const params: any[] = [];
+
+    if (excludedUserIds.length > 0) {
+      filters.push(`ra.user_id NOT IN (${excludedUserIds.map((_, i) => `$${params.length + i + 1}`).join(',')})`);
+      params.push(...excludedUserIds);
+    }
 
     if (region && region !== 'All') {
       if (region === 'International') {
@@ -22,6 +30,11 @@ export async function GET(request: NextRequest) {
     if (school && school !== 'All') {
       filters.push(`u.school_name = $${params.length + 1}`);
       params.push(school);
+    }
+
+    if (language && language !== 'all') {
+      filters.push(`LOWER(ra.language) = $${params.length + 1}`);
+      params.push(language.toLowerCase());
     }
 
     const baseFilter = filters.join(' AND ');

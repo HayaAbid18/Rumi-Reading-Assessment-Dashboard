@@ -2,7 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function GET(request: NextRequest) {
+  const language = request.nextUrl.searchParams.get('language');
+  const excludedUserIdsParam = request.nextUrl.searchParams.get('excludedUserIds');
+  const excludedUserIds = excludedUserIdsParam ? excludedUserIdsParam.split(',') : [];
+
   try {
+    // Build additional filters for language and excluded users
+    const filters: string[] = ["ra.status = 'completed'"];
+
+    if (excludedUserIds.length > 0) {
+      filters.push(`ra.user_id NOT IN (${excludedUserIds.join(',')})`);
+    }
+
+    if (language && language !== 'all') {
+      filters.push(`LOWER(ra.language) = '${language.toLowerCase()}'`);
+    }
+
+    const whereClause = `WHERE ${filters.join(' AND ')}`;
+    const joinClause = excludedUserIds.length > 0 ? 'JOIN users u ON ra.user_id = u.id' : '';
+
     // Simplified cohort retention queries (no date filters needed for cohort analysis)
     // Simple student cohort retention query
     const studentCohortResult = await pool.query(
@@ -11,7 +29,8 @@ export async function GET(request: NextRequest) {
           ra.student_identifier,
           DATE_TRUNC('week', MIN(ra.created_at))::date as cohort_week
         FROM reading_assessments ra
-        WHERE ra.status = 'completed'
+        ${joinClause}
+        ${whereClause}
         GROUP BY ra.student_identifier
       ),
       weekly_activity AS (
@@ -19,7 +38,8 @@ export async function GET(request: NextRequest) {
           ra.student_identifier,
           DATE_TRUNC('week', ra.created_at)::date as active_week
         FROM reading_assessments ra
-        WHERE ra.status = 'completed'
+        ${joinClause}
+        ${whereClause}
         GROUP BY ra.student_identifier, DATE_TRUNC('week', ra.created_at)
       )
       SELECT
@@ -52,7 +72,8 @@ export async function GET(request: NextRequest) {
           ra.user_id,
           DATE_TRUNC('week', MIN(ra.created_at))::date as cohort_week
         FROM reading_assessments ra
-        WHERE ra.status = 'completed'
+        ${joinClause}
+        ${whereClause}
         GROUP BY ra.user_id
       ),
       weekly_activity AS (
@@ -60,7 +81,8 @@ export async function GET(request: NextRequest) {
           ra.user_id,
           DATE_TRUNC('week', ra.created_at)::date as active_week
         FROM reading_assessments ra
-        WHERE ra.status = 'completed'
+        ${joinClause}
+        ${whereClause}
         GROUP BY ra.user_id, DATE_TRUNC('week', ra.created_at)
       )
       SELECT

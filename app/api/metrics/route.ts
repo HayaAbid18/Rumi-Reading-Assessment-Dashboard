@@ -5,11 +5,19 @@ export async function GET(request: NextRequest) {
   const region = request.nextUrl.searchParams.get('region');
   const startDate = request.nextUrl.searchParams.get('startDate');
   const endDate = request.nextUrl.searchParams.get('endDate');
+  const language = request.nextUrl.searchParams.get('language');
+  const excludedUserIdsParam = request.nextUrl.searchParams.get('excludedUserIds');
+  const excludedUserIds = excludedUserIdsParam ? excludedUserIdsParam.split(',') : [];
 
   try {
     // Build filter conditions
-    const filters: string[] = ["ra.status = 'completed'", "COALESCE(u.is_test_user, false) = false"];
+    const filters: string[] = ["ra.status = 'completed'"];
     const params: any[] = [];
+
+    if (excludedUserIds.length > 0) {
+      filters.push(`ra.user_id NOT IN (${excludedUserIds.map((_, i) => `$${params.length + i + 1}`).join(',')})`);
+      params.push(...excludedUserIds);
+    }
 
     if (region && region !== 'All') {
       if (region === 'International') {
@@ -18,6 +26,11 @@ export async function GET(request: NextRequest) {
         filters.push(`u.region = $${params.length + 1}`);
         params.push(region);
       }
+    }
+
+    if (language && language !== 'all') {
+      filters.push(`LOWER(ra.language) = $${params.length + 1}`);
+      params.push(language.toLowerCase());
     }
 
     if (startDate && endDate) {
@@ -60,7 +73,8 @@ export async function GET(request: NextRequest) {
       `SELECT
         COUNT(DISTINCT ra.student_identifier) as active_students,
         COUNT(DISTINCT ra.user_id) as active_teachers,
-        COUNT(DISTINCT u.school_name) as active_schools
+        COUNT(DISTINCT u.school_name) as active_schools,
+        (SELECT COUNT(DISTINCT student_identifier) FROM reading_assessments WHERE status = 'completed') as total_students
       FROM reading_assessments ra
       JOIN users u ON ra.user_id = u.id
       ${whereClause}`,
