@@ -6,13 +6,13 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(
       `SELECT DISTINCT
         u.id,
-        COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as name,
-        u.email
+        COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as name
       FROM users u
-      JOIN reading_assessments ra ON u.id = ra.user_id
-      WHERE ra.status = 'completed'
-      ORDER BY COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')`,
-      []
+      WHERE EXISTS (
+        SELECT 1 FROM reading_assessments ra
+        WHERE ra.user_id = u.id AND ra.status = 'completed'
+      )
+      ORDER BY COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')`
     );
 
     return NextResponse.json({
