@@ -23,7 +23,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeMetric, setActiveMetric] = useState('avg_wcpm');
   const [timeRange, setTimeRange] = useState('last_4_weeks');
-  const [languageFilter, setLanguageFilter] = useState('all');
   const [allUsers, setAllUsers] = useState<Array<{id: string; name: string}>>([]);
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -65,7 +64,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchAllData();
-  }, [selectedRegion, selectedSchool, timeRange, languageFilter, excludedUserIds]);
+  }, [selectedRegion, selectedSchool, timeRange, excludedUserIds]);
 
   const fetchRegions = async () => {
     try {
@@ -105,15 +104,14 @@ export default function Dashboard() {
       const { startDate, endDate } = getDateRange(timeRange);
       const dateParams = `&startDate=${startDate}&endDate=${endDate}`;
       const excludedUsersParam = excludedUserIds.length > 0 ? `&excludedUserIds=${excludedUserIds.join(',')}` : '';
-      const filterParams = `${excludedUsersParam}&language=${languageFilter}`;
 
       const [metricsRes, teachersRes, studentsRes, engagementRes, cohortRes, churnRes] = await Promise.all([
-        fetch(`/api/metrics?region=${selectedRegion}${dateParams}${filterParams}`),
-        fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}${dateParams}${filterParams}`),
-        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}${dateParams}${filterParams}`),
-        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}${filterParams}`),
-        fetch(`/api/retention/cohort?region=${selectedRegion}&school=${selectedSchool}${dateParams}${filterParams}`),
-        fetch(`/api/retention/churn?region=${selectedRegion}&school=${selectedSchool}${filterParams}`)
+        fetch(`/api/metrics?region=${selectedRegion}${dateParams}${excludedUsersParam}`),
+        fetch(`/api/teacher-metrics?school=${selectedSchool}&region=${selectedRegion}${dateParams}${excludedUsersParam}`),
+        fetch(`/api/student-records?school=${selectedSchool}&region=${selectedRegion}${dateParams}${excludedUsersParam}`),
+        fetch(`/api/engagement?region=${selectedRegion}&school=${selectedSchool}${dateParams}${excludedUsersParam}`),
+        fetch(`/api/retention/cohort?region=${selectedRegion}&school=${selectedSchool}${dateParams}${excludedUsersParam}`),
+        fetch(`/api/retention/churn?region=${selectedRegion}&school=${selectedSchool}${excludedUsersParam}`)
       ]);
 
       const [metricsData, teachersData, studentsData, engagementData, cohortData, churnData] = await Promise.all([
@@ -384,16 +382,6 @@ export default function Dashboard() {
             <option value="last_week">Last Week</option>
             <option value="last_4_weeks">Last 4 Weeks</option>
             <option value="last_30_days">Last 30 Days</option>
-          </select>
-
-          <select
-            value={languageFilter}
-            onChange={(e) => setLanguageFilter(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 cursor-pointer"
-          >
-            <option value="all">All languages</option>
-            <option value="urdu">Urdu</option>
-            <option value="english">English</option>
           </select>
 
           <div className="relative">
